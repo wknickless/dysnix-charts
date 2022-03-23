@@ -1,0 +1,8 @@
+image:
+  tag: "1.15.3"
+
+security:
+  enabled: true
+
+certManager:
+  enabled: true

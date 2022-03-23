@@ -158,3 +158,60 @@ tests:
     busybox:
       image: busybox
       tag: 1.33.1
+
+# Configuration to run NiFi Registry securely
+# c.f. https://nifi.apache.org/docs/nifi-registry-docs/html/administration-guide.html#security_configuration
+# TLS keystores and truststores must be configured to run secure; 
+# see (e.g.) certManager (below)
+
+security:
+  # Disabled by default (following the principle of least astonishment)
+  enabled: false
+  httpsHost: "0.0.0.0"
+  httpsPort: 18443
+  admin: "Initial Administrator"
+  persistence:
+  # storageClass: "-"
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    
+
+# cert-manager support
+# Setting this true will have cert-manager create a private CA just for NiFi Registry,
+# including certificates for each NiFi Registry node.
+certManager:
+  # If true, use cert-manager to create and rotate intra-NiFi-Registry-cluster 
+  # TLS keys (note that cert-manager is a Kubernetes cluster-wide resource, so
+  # is not installed automatically by this chart); c.f. https://cert-manager.io
+  enabled: false
+  # TLS Common Name of a client, suitable for using as an initial administrator.
+  # The client certificate (including private key) will be in a Kubernetes
+  # TLS secret of the name {{ template "nifi-registry.fullname"}}-client
+  clientCommonName: "Initial Administrator"
+  # Kubernetes cluster top level domain, to generate fully qualified domain names
+  # for certificate Common Names
+  clusterDomain: cluster.local
+  # Java Key Store (JKS) password for NiFi Registry keystore
+  keystorePasswd: changeme
+  # Java Key Store (JKS) password for NiFi Registry truststore
+  truststorePasswd: changeme
+  # Additional DNS names to incorporate into TLS certificates (e.g. where users 
+  # point browsers to access the NiFi Registry UI)
+  additionalDnsNames: 
+    - localhost
+  # Names of Kubernetes secrets containing ca.crt keys to add to the
+  # NiFi Registry truststore (e.g. CAs of NiFi Registry clients)
+  caSecrets: 
+  # How often the sidecar refreshes the NiFi keystore and truststore from
+  # the cert-manager Kubernetes secrets (and other caSecrets)
+  refreshSeconds: 300
+  # sidecar resources needed to populate and refresh those secrets
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  # PVC details for persisting the users.xml and authorizations.xml files
+

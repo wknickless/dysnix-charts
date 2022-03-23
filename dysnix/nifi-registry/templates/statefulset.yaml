@@ -103,11 +103,21 @@ spec:
                 cp --verbose --dereference /ssh/id_rsa /home/nifi/.ssh/
               {{- end }}
             {{- end }}
+
+              # prop_replace() and hostname
+              . ${NIFI_REGISTRY_BASE_DIR}/scripts/common.sh
+              
               ${NIFI_REGISTRY_BASE_DIR}/scripts/start.sh
           ports:
+          {{ if .Values.security.enabled }}
+            - name: https
+              containerPort: {{ .Values.security.httpsPort }}
+              protocol: TCP
+          {{/* if .Values.security.enabled */}}{{ else }}
             - name: http
               containerPort: 18080
               protocol: TCP
+          {{/* if .Values.security.enabled */}}{{ end }}
           env:
           {{- if .Values.flowProvider.git.enabled }}
             - name: NIFI_REGISTRY_FLOW_PROVIDER
@@ -165,16 +175,119 @@ spec:
               mountPath: /ssh
               readOnly: true
             {{- end }}
+          {{- if .Values.certManager.enabled }}
+            - name: "tls"
+              mountPath: /opt/nifi-registry/nifi-registry-current/tls
+              readOnly: true
+          {{- /* if .Values.certManager.enabled */}}{{ end }}  
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           readinessProbe:
             tcpSocket:
+          {{ if .Values.security.enabled }}
+              port: {{ .Values.security.httpsPort }}
+          {{/* if .Values.security.enabled */}}{{ else }}
               port: 18080
+          {{/* if .Values.security.enabled */}}{{ end }}
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 1
             successThreshold: 2
             failureThreshold: 3
+      {{- if .Values.certManager.enabled }}
+        - name: cert-manager
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+          - bash
+          - -ce
+          - |
+            trap "exit 0" TERM
+            
+            NODENAME=$(hostname)
+            mkdir -p "${NIFI_REGISTRY_HOME}"/tls/cert-manager
+  
+            while :
+            do
+              curl --cacert /run/secrets/kubernetes.io/secret-reader-token/ca.crt \
+                   -H "Authorization: Bearer $(cat /run/secrets/kubernetes.io/secret-reader-token/token)" \
+                   https://kubernetes.default.svc/api/v1/namespaces/$(cat /run/secrets/kubernetes.io/secret-reader-token/namespace)/secrets/$(hostname) \
+                   --output /tmp/secret.json
+                   
+              jq .data < /tmp/secret.json > /tmp/secret-data.json
+              jq -r '."tls.crt"' < /tmp/secret-data.json | base64 -d > /tmp/tls.crt
+              jq -r '."tls.key"' < /tmp/secret-data.json | base64 -d > /tmp/tls.key
+    
+              openssl pkcs12 -export -in      "/tmp/tls.crt" \
+                                     -inkey   "/tmp/tls.key" \
+                                     -name    "${NODENAME}" \
+                                     -out     "/tmp/tls.p12" \
+                                     -passout "pass:{{ .Values.certManager.keystorePasswd }}"
+              rm -f "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks"
+              keytool -importkeystore \
+                      -noprompt \
+                      -destkeystore "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks" \
+                      -srckeystore "/tmp/tls.p12" \
+                      -srcstoretype PKCS12 \
+                      -srcstorepass "{{ .Values.certManager.keystorePasswd }}" \
+                      -deststorepass "{{ .Values.certManager.keystorePasswd }}"
+              keytool -list -keystore "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks" \
+                            -storepass "{{ .Values.certManager.keystorePasswd }}"
+              mv  "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks" "${NIFI_REGISTRY_HOME}/tls/keystore.jks"
+    
+              # Note opportunity here to inject additional trusted certs named ca.crt in other
+              # subdirectories of /opt/nifi/nifi-current/tls/, using custom secrets and/or configmaps
+  
+              jq -r '."ca.crt"' < /tmp/secret-data.json | base64 -d > "${NIFI_REGISTRY_HOME}"/tls/cert-manager/ca.crt
+              
+              rm -f "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks"
+              for ca in "${NIFI_REGISTRY_HOME}"/tls/*/ca.crt
+              do
+                ALIAS=$(echo $ca | awk -F "/" '{print $(NF-1) }' -)
+                keytool -import \
+                        -noprompt \
+                        -trustcacerts \
+                        -alias $ALIAS \
+                        -file $ca \
+                        -keystore "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks" \
+                        -storepass "{{ .Values.certManager.truststorePasswd }}"
+              done
+              keytool -list -keystore "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks" \
+                            -storepass "{{ .Values.certManager.truststorePasswd }}"
+              mv "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks" "${NIFI_REGISTRY_HOME}/tls/truststore.jks"
+    
+              echo Starting to sleep for {{ .Values.certManager.refreshSeconds }} seconds at $(date)
+              sleep {{ .Values.certManager.refreshSeconds }}
+            done
+          volumeMounts:
+            - name: "tls"
+              mountPath: /opt/nifi-registry/nifi-registry-current/tls
+            - name: secret-reader-token
+              mountPath: /run/secrets/kubernetes.io/secret-reader-token
+            {{- range $secret := .Values.secrets }}
+              {{- if $secret.mountPath }}
+                {{- if $secret.keys }}
+                  {{- range $key := $secret.keys }}
+            - name: {{ include "nifi-registry.fullname" $ }}-{{ $secret.name }}
+              mountPath: {{ $secret.mountPath }}/{{ $key }}
+              subPath: {{ $key }}
+              readOnly: true
+                  {{- end }}
+                {{- else }}
+            - name: {{ include "nifi-registry.fullname" $ }}-{{ $secret.name }}
+              mountPath: {{ $secret.mountPath }}
+              readOnly: true
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{ range $secret := .Values.certManager.caSecrets }}
+            - name: {{ include "nifi-registry.fullname" $ }}-{{ $secret }}
+              mountPath: /opt/nifi-registry/nifi-registry-current/tls/{{ $secret }}
+              readOnly: true
+            {{ end }}
+          resources:
+{{ toYaml .Values.certManager.resources | indent 12 }}
+        {{- /* if .Values.certManager.enabled */}}{{ end }}
       volumes:
         {{- if .Values.ssh.known_hosts }}
         - name: sshdir
@@ -206,6 +319,18 @@ spec:
         - name: git-key-fixed
           emptyDir: {}
         {{- end }}
+      {{- if .Values.certManager.enabled }}
+      - name: secret-reader-token
+        secret:
+          secretName: {{ template "nifi-registry.fullname" $ }}-secret-reader-token
+      - name: tls
+        emptyDir: {}
+      {{- range .Values.certManager.caSecrets }}
+      - name: {{ include "nifi-registry.fullname" $ }}-{{ . }}
+        secret:
+          secretName: {{ . }}
+      {{- end }}
+      {{- /* if .Values.certManager.enabled */}}{{ end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -218,8 +343,8 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{ if .Values.persistence.enabled }}
   volumeClaimTemplates:
+  {{ if .Values.persistence.enabled }}
   - metadata:
       name: database
     spec:
@@ -251,3 +376,20 @@ spec:
         requests:
           storage: {{ .Values.persistence.flowStorage.size | quote }}
   {{ end }}
+  {{ if .Values.security.enabled }}
+  - metadata:
+      name: auth-conf
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      {{ if .Values.security.persistence.storageClass }}
+      {{ if (eq "-" .Values.security.persistence.storageClass) }}
+      storageClassName: ""
+      {{ else }}
+      storageClassName: "{{ .Values.security.persistence.storageClass }}"
+      {{ end }}
+      {{ end }}
+      resources:
+        requests:
+          storage: {{ .Values.security.persistence.size | quote }}
+  {{/* if .Values.security.enabled */}}{{end}}
