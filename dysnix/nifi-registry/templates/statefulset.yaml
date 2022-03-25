@@ -132,8 +132,41 @@ spec:
                 sleep 2
               done
           {{- /* if .Values.certManager.enabled */}}{{ end }}
+          {{ if .Values.security.enabled }}
+              # Shamelessly stolen from $NIFI_REGISTRY_BASE_DIR/scripts/secure.sh
+              # and $NIFI_REGISTRY_BASE_DIR/scripts/start.sh
 
+              scripts_dir='/opt/nifi-registry/scripts'
+              . "${scripts_dir}/update_database.sh"
+              . "${scripts_dir}/update_flow_provider.sh"
+              . "${scripts_dir}/update_bundle_provider.sh"
+
+              prop_replace 'nifi.registry.security.keystore'           "${KEYSTORE_PATH}"
+              prop_replace 'nifi.registry.security.keystoreType'       "${KEYSTORE_TYPE}"
+              prop_replace 'nifi.registry.security.keystorePasswd'     "${KEYSTORE_PASSWORD}"
+              prop_replace 'nifi.registry.security.keyPasswd'          "${KEY_PASSWORD:-$KEYSTORE_PASSWORD}"
+              prop_replace 'nifi.registry.security.truststore'         "${TRUSTSTORE_PATH}"
+              prop_replace 'nifi.registry.security.truststoreType'     "${TRUSTSTORE_TYPE}"
+              prop_replace 'nifi.registry.security.truststorePasswd'   "${TRUSTSTORE_PASSWORD}"
+              
+              # Disable HTTP and enable HTTPS
+              prop_replace 'nifi.registry.web.http.port'   ''
+              prop_replace 'nifi.registry.web.http.host'   ''
+              prop_replace 'nifi.registry.web.https.port'  "${NIFI_REGISTRY_WEB_HTTPS_PORT:-18443}"
+              prop_replace 'nifi.registry.web.https.host'  "${NIFI_REGISTRY_WEB_HTTPS_HOST:-$HOSTNAME}"
+
+              # Continuously provide logs so that 'docker logs' can produce them
+              tail -F "${NIFI_REGISTRY_HOME}/logs/nifi-registry-app.log" &
+              "${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh" run &
+              nifi_registry_pid="$!"
+
+              trap "echo Received trapped signal, beginning shutdown...;" KILL TERM HUP INT EXIT;
+
+              echo NiFi-Registry running with PID ${nifi_registry_pid}.
+              tail -f /dev/null
+          {{- /* if .Values.security.enabled */}}{{ else }}  
               ${NIFI_REGISTRY_BASE_DIR}/scripts/start.sh
+          {{- /* if .Values.security.enabled */}}{{ end }}  
           ports:
           {{ if .Values.security.enabled }}
             - name: https

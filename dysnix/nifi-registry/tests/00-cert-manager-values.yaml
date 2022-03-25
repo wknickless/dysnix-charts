@@ -3,6 +3,7 @@ image:
 
 security:
   enabled: true
+  admin: "CN=Initial Administrator, OU=NiFi Registry"
 
 certManager:
   enabled: true
