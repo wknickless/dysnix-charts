@@ -7,3 +7,6 @@ security:
 
 certManager:
   enabled: true
+
+service:
+  port: 18443

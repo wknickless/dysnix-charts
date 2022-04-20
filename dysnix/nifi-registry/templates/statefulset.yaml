@@ -117,6 +117,9 @@ spec:
               prop_replace nifi.registry.security.needClientAuth "{{ .Values.security.needClientAuth }}"
               xmlstarlet ed --inplace --update "//authorizers/userGroupProvider/property[@name='Users File']" -v './auth-conf/users.xml' "${NIFI_REGISTRY_HOME}/conf/authorizers.xml"
               xmlstarlet ed --inplace --update "//authorizers/accessPolicyProvider/property[@name='Authorizations File']" -v './auth-conf/authorizations.xml' "${NIFI_REGISTRY_HOME}/conf/authorizers.xml"
+              xmlstarlet ed --inplace --update "//authorizers/accessPolicyProvider/property[@name='Initial Admin Identity']" -v '{{ .Values.security.admin }}' "${NIFI_REGISTRY_HOME}/conf/authorizers.xml"
+              xmlstarlet ed --inplace --update "//authorizers/userGroupProvider/property[@name='Initial User Identity 1']" -v '{{ .Values.security.admin }}' "${NIFI_REGISTRY_HOME}/conf/authorizers.xml"
+
            {{- /* if .Values.security.enabled */}}{{ end }}  
 
           {{- if .Values.certManager.enabled }}
