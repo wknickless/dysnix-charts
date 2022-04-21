@@ -2,6 +2,8 @@ name: NiFi Registry
 
 on:
   push:
+    paths:
+      - 'dysnix/nifi-registry/**'
 
 jobs:
   test-cert-manager-initial-administrator:
