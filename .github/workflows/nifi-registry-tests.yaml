@@ -22,7 +22,7 @@ jobs:
         run: |
           cd dysnix/nifi-registry
           kubectl apply -f tests/01-oidc-test-framework/socks5.yaml
-          kubectl wait --for=condition=Ready pod/socks5-0 --timeout=300s
+          kubectl rollout status --watch --timeout=600s statefulset/socks5
       - name: Install cert-manager
         run: |
           cd dysnix/nifi-registry
@@ -31,7 +31,7 @@ jobs:
         run: |
           cd dysnix/nifi-registry
           helm install nifi-registry . -f tests/00-cert-manager-values.yaml
-          kubectl wait --for=condition=Ready pod/nifi-registry-0 --timeout=300s
+          kubectl rollout status --watch --timeout=600s statefulset/nifi-registry
       - name: Confirm Initial Administrator Configuration
         run: |
           cd dysnix/nifi-registry
