@@ -15,9 +15,6 @@ jobs:
         with:
           minikube version: 'v1.20.0'
           kubernetes version: 'v1.20.2'
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y jq
       - name: Install SOCKS5 Proxy
         run: |
           cd dysnix/nifi-registry
@@ -43,4 +40,6 @@ jobs:
                --url https://nifi-registry:18443/nifi-registry-api/access \
                --cert /tmp/tls.crt \
                --key /tmp/tls.key \
-               --socks5-hostname "$K8SNODEIP":"$K8SSOCKS5PORT" | jq
+               --socks5-hostname "$K8SNODEIP":"$K8SSOCKS5PORT" | \
+            jq | \
+            diff -c tests/00-initial-administrator-results.json -
