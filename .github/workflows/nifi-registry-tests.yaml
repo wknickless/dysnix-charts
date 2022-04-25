@@ -3,6 +3,7 @@ name: NiFi Registry
 on:
   push:
     paths:
+      - '.github/workflows/nifi-registry-tests.yaml'
       - 'dysnix/nifi-registry/**'
 
 jobs:
