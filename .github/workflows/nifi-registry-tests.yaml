@@ -71,7 +71,7 @@ jobs:
                               --cert /tmp/tls.crt \
                               --key /tmp/tls.key \
                               --socks5-hostname "$K8SNODEIP":"$K8SSOCKS5PORT" 2>&1 | \
-                           /bin/grep start)
+                           /bin/grep start || echo NiFi Registry connect failure)
             echo New Certificate "$NEWCERTSTART"
               if [ \""$OLDCERTSTART"\" != \""$NEWCERTSTART"\" ]
               then
