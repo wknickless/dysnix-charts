@@ -7,7 +7,7 @@ on:
 
 jobs:
   test-cert-manager-initial-administrator:
-    name: Test NiFi Registry cert-manager Initial Administrator"
+    name: Test NiFi Registry cert-manager with Initial Administrator and Certificate Renewal"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -45,3 +45,19 @@ jobs:
                --socks5-hostname "$K8SNODEIP":"$K8SSOCKS5PORT" | \
             jq | \
             diff -c tests/00-initial-administrator-results.json -
+      - name: Confirm Restart on Certificate Renewal
+        run: |
+            OLDCERTSTART=$(kubectl exec nifi-registry-0 -c nifi-registry -- curl -kv https://localhost:18443 2>&1 | /bin/grep start)
+            echo Old Certificate "$OLDCERTSTART"
+            cmctl renew nifi-registry-0
+            for n in [ 0 1 2 3 4 5 6 7 8 9 ]
+            do
+              NEWCERTSTART=$(kubectl exec nifi-registry-0 -c nifi-registry -- curl -kv https://localhost:18443 2>&1 | /bin/grep start)
+              echo New Certificate "$NEWCERTSTART"
+                if [ \""$OLDCERTSTART"\" != \""$NEWCERTSTART"\" ]
+                then
+                  exit 0
+                fi
+                sleep 30
+            done
+            echo Certificate did not update for 300 seconds!

@@ -26,6 +26,10 @@ spec:
       serviceAccountName: {{ include "nifi-registry.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.certManager.enabled }}
+      {{/* Need to restart pod when TLS certificate is updated */}}
+      shareProcessNamespace: true  
+      {{- /* if .Values.certManager.enabled */}}{{ end }}
       initContainers:
         {{- if .Values.flowProvider.git.enabled }}
         - name: git-clone
@@ -122,18 +126,45 @@ spec:
 
            {{- /* if .Values.security.enabled */}}{{ end }}  
 
-          {{- if .Values.certManager.enabled }}
-              while [ ! -r "${NIFI_REGISTRY_HOME}/tls/keystore.jks" ]
+           {{- if .Values.certManager.enabled }}
+              # Note opportunity here to inject additional trusted certs named ca.crt in other
+              # subdirectories of /opt/nifi/nifi-current/tls/, using custom secrets and/or configmaps.
+              # If any of those trusted certs expire then you will need to restart the pod to pick
+              # them up, as the truststore is only created at pod startup and Kubernetes won't
+              # update secrets mounted as subPaths anyway.
+              # c.f. https://kubernetes.io/docs/concepts/storage/volumes/#secret
+              /bin/rm -fv "${NIFI_REGISTRY_HOME}/tls/truststore.jks" \
+                          "${NIFI_REGISTRY_HOME}/tls/keystore.jks" \
+                          "/tmp/tls.p12"
+              for ca in "${NIFI_REGISTRY_HOME}"/tls/*/ca.crt
               do
-                echo "${NIFI_REGISTRY_HOME}/tls/keystore.jks" is not readable!  Waiting for cert-manager sidecar to populate it.
-                sleep 2
+                ALIAS=$(echo $ca | awk -F "/" '{print $(NF-1) }' -)
+                keytool -import \
+                        -noprompt \
+                        -trustcacerts \
+                        -alias $ALIAS \
+                        -file $ca \
+                        -keystore "${NIFI_REGISTRY_HOME}/tls/truststore.jks" \
+                        -storepass "{{ .Values.certManager.truststorePasswd }}"
               done
+              keytool -list -keystore "${NIFI_REGISTRY_HOME}/tls/truststore.jks" \
+                          -storepass "{{ .Values.certManager.truststorePasswd }}"
 
-              while [ ! -r "${NIFI_REGISTRY_HOME}/tls/truststore.jks" ]
-              do
-                echo "${NIFI_REGISTRY_HOME}/tls/truststore.jks" is not readable!  Waiting for cert-manager sidecar to populate it.
-                sleep 2
-              done
+              openssl pkcs12 -export -in      "${NIFI_REGISTRY_HOME}/tls/cert-manager/tls.crt" \
+                                     -inkey   "${NIFI_REGISTRY_HOME}/tls/cert-manager/tls.key" \
+                                     -name    "$(hostname)" \
+                                     -out     "/tmp/tls.p12" \
+                                     -passout "pass:{{ .Values.certManager.keystorePasswd }}"
+              keytool -importkeystore \
+                      -noprompt \
+                      -destkeystore "${NIFI_REGISTRY_HOME}/tls/keystore.jks" \
+                      -srckeystore "/tmp/tls.p12" \
+                      -srcstoretype PKCS12 \
+                      -srcstorepass "{{ .Values.certManager.keystorePasswd }}" \
+                      -deststorepass "{{ .Values.certManager.keystorePasswd }}"
+              keytool -list -keystore "${NIFI_REGISTRY_HOME}/tls/keystore.jks" \
+                            -storepass "{{ .Values.certManager.keystorePasswd }}"
+  
           {{- /* if .Values.certManager.enabled */}}{{ end }}
           {{ if .Values.security.enabled }}
               # Shamelessly stolen from $NIFI_REGISTRY_BASE_DIR/scripts/secure.sh
@@ -157,19 +188,14 @@ spec:
               prop_replace 'nifi.registry.web.http.host'   ''
               prop_replace 'nifi.registry.web.https.port'  "${NIFI_REGISTRY_WEB_HTTPS_PORT:-18443}"
               prop_replace 'nifi.registry.web.https.host'  "${NIFI_REGISTRY_WEB_HTTPS_HOST:-$HOSTNAME}"
-
-              # Continuously provide logs so that 'docker logs' can produce them
-              tail -F "${NIFI_REGISTRY_HOME}/logs/nifi-registry-app.log" &
-              "${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh" run &
-              nifi_registry_pid="$!"
-
-              trap "echo Received trapped signal, beginning shutdown...;" KILL TERM HUP INT EXIT;
-
-              echo NiFi-Registry running with PID ${nifi_registry_pid}.
-              tail -f /dev/null
-          {{- /* if .Values.security.enabled */}}{{ else }}  
-              ${NIFI_REGISTRY_BASE_DIR}/scripts/start.sh
-          {{- /* if .Values.security.enabled */}}{{ end }}  
+          {{- /* if .Values.security.enabled */}}{{ end }}
+              # Log everything to the console, not to files
+              xmlstarlet ed --inplace --delete "//configuration/logger/appender-ref[@ref='CONSOLE']" "${NIFI_REGISTRY_HOME}/conf/logback.xml"
+              xmlstarlet ed --inplace --update "//configuration/logger/appender-ref[@ref='BOOTSTRAP_FILE']/@ref" -v CONSOLE "${NIFI_REGISTRY_HOME}/conf/logback.xml"
+              xmlstarlet ed --inplace --update "//configuration/logger/appender-ref[@ref='EVENTS_FILE']/@ref" -v CONSOLE "${NIFI_REGISTRY_HOME}/conf/logback.xml"
+              xmlstarlet ed --inplace --update "//configuration/logger/appender-ref[@ref='APP_FILE']/@ref" -v CONSOLE "${NIFI_REGISTRY_HOME}/conf/logback.xml"
+              xmlstarlet ed --inplace --update "//configuration/root/appender-ref[@ref='APP_FILE']/@ref" -v CONSOLE "${NIFI_REGISTRY_HOME}/conf/logback.xml"
+              exec ${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh run
           ports:
           {{ if .Values.security.enabled }}
             - name: https
@@ -262,9 +288,18 @@ spec:
               readOnly: true
             {{- end }}
             {{- if .Values.certManager.enabled }}
+            # FIXME - cert-manager support limited to a single pod statefulset
             - name: "tls"
               mountPath: /opt/nifi-registry/nifi-registry-current/tls
+            - name: {{ include "nifi-registry.fullname" . }}-0
+              mountPath: /opt/nifi-registry/nifi-registry-current/tls/cert-manager
+            {{ range $secret := .Values.certManager.caSecrets }}
+            - name: {{ include "nifi-registry.fullname" $ }}-{{ $secret }}
+              mountPath: /opt/nifi-registry/nifi-registry-current/tls/{{ $secret }}
               readOnly: true
+            {{ end }}
+            - name: "run"
+              mountPath: /opt/nifi-registry/nifi-registry-current/run
             {{- /* if .Values.certManager.enabled */}}{{ end }}  
             {{- if .Values.security.enabled }}
             - name: "auth-conf"
@@ -294,88 +329,28 @@ spec:
           - -ce
           - |
             trap "exit 0" TERM
-            
-            NODENAME=$(hostname)
-            mkdir -p "${NIFI_REGISTRY_HOME}"/tls/cert-manager
-  
+
+            cp /opt/nifi-registry/nifi-registry-current/tls/cert-manager/tls.crt /tmp/tls.crt            
+
             while :
             do
-              curl --cacert /run/secrets/kubernetes.io/secret-reader-token/ca.crt \
-                   -H "Authorization: Bearer $(cat /run/secrets/kubernetes.io/secret-reader-token/token)" \
-                   https://kubernetes.default.svc/api/v1/namespaces/$(cat /run/secrets/kubernetes.io/secret-reader-token/namespace)/secrets/$(hostname) \
-                   --output /tmp/secret.json
-                   
-              jq .data < /tmp/secret.json > /tmp/secret-data.json
-              jq -r '."tls.crt"' < /tmp/secret-data.json | base64 -d > /tmp/tls.crt
-              jq -r '."tls.key"' < /tmp/secret-data.json | base64 -d > /tmp/tls.key
-    
-              openssl pkcs12 -export -in      "/tmp/tls.crt" \
-                                     -inkey   "/tmp/tls.key" \
-                                     -name    "${NODENAME}" \
-                                     -out     "/tmp/tls.p12" \
-                                     -passout "pass:{{ .Values.certManager.keystorePasswd }}"
-              rm -f "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks"
-              keytool -importkeystore \
-                      -noprompt \
-                      -destkeystore "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks" \
-                      -srckeystore "/tmp/tls.p12" \
-                      -srcstoretype PKCS12 \
-                      -srcstorepass "{{ .Values.certManager.keystorePasswd }}" \
-                      -deststorepass "{{ .Values.certManager.keystorePasswd }}"
-              keytool -list -keystore "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks" \
-                            -storepass "{{ .Values.certManager.keystorePasswd }}"
-              mv  "${NIFI_REGISTRY_HOME}/tls/keystore-new.jks" "${NIFI_REGISTRY_HOME}/tls/keystore.jks"
-    
-              # Note opportunity here to inject additional trusted certs named ca.crt in other
-              # subdirectories of /opt/nifi/nifi-current/tls/, using custom secrets and/or configmaps
-  
-              jq -r '."ca.crt"' < /tmp/secret-data.json | base64 -d > "${NIFI_REGISTRY_HOME}"/tls/cert-manager/ca.crt
-              
-              rm -f "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks"
-              for ca in "${NIFI_REGISTRY_HOME}"/tls/*/ca.crt
-              do
-                ALIAS=$(echo $ca | awk -F "/" '{print $(NF-1) }' -)
-                keytool -import \
-                        -noprompt \
-                        -trustcacerts \
-                        -alias $ALIAS \
-                        -file $ca \
-                        -keystore "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks" \
-                        -storepass "{{ .Values.certManager.truststorePasswd }}"
-              done
-              keytool -list -keystore "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks" \
-                            -storepass "{{ .Values.certManager.truststorePasswd }}"
-              mv "${NIFI_REGISTRY_HOME}/tls/truststore-new.jks" "${NIFI_REGISTRY_HOME}/tls/truststore.jks"
-    
+              if ! diff /opt/nifi-registry/nifi-registry-current/tls/cert-manager/tls.crt /tmp/tls.crt
+              then
+                echo Terminating pod to pick up new certificate.
+                echo It would be nice for Registry to have nifi.registry.security.autoreload, eh?
+                bin/nifi-registry.sh stop
+                exit 0
+              fi
               echo Starting to sleep for {{ .Values.certManager.refreshSeconds }} seconds at $(date)
               sleep {{ .Values.certManager.refreshSeconds }}
             done
           volumeMounts:
-            - name: "tls"
-              mountPath: /opt/nifi-registry/nifi-registry-current/tls
-            - name: secret-reader-token
-              mountPath: /run/secrets/kubernetes.io/secret-reader-token
-            {{- range $secret := .Values.secrets }}
-              {{- if $secret.mountPath }}
-                {{- if $secret.keys }}
-                  {{- range $key := $secret.keys }}
-            - name: {{ include "nifi-registry.fullname" $ }}-{{ $secret.name }}
-              mountPath: {{ $secret.mountPath }}/{{ $key }}
-              subPath: {{ $key }}
+              # FIXME - cert-manager support limited to a single pod statefulset
+            - name: {{ include "nifi-registry.fullname" $ }}-0
+              mountPath: /opt/nifi-registry/nifi-registry-current/tls/cert-manager
               readOnly: true
-                  {{- end }}
-                {{- else }}
-            - name: {{ include "nifi-registry.fullname" $ }}-{{ $secret.name }}
-              mountPath: {{ $secret.mountPath }}
-              readOnly: true
-                {{- end }}
-              {{- end }}
-            {{- end }}
-            {{ range $secret := .Values.certManager.caSecrets }}
-            - name: {{ include "nifi-registry.fullname" $ }}-{{ $secret }}
-              mountPath: /opt/nifi-registry/nifi-registry-current/tls/{{ $secret }}
-              readOnly: true
-            {{ end }}
+            - name: "run"
+              mountPath: /opt/nifi-registry/nifi-registry-current/run
           resources:
 {{ toYaml .Values.certManager.resources | indent 12 }}
         {{- /* if .Values.certManager.enabled */}}{{ end }}
@@ -411,11 +386,13 @@ spec:
           emptyDir: {}
         {{- end }}
       {{- if .Values.certManager.enabled }}
-      - name: secret-reader-token
-        secret:
-          secretName: {{ template "nifi-registry.fullname" $ }}-secret-reader-token
       - name: tls
         emptyDir: {}
+      - name: run
+        emptyDir: {}
+      - name: {{ include "nifi-registry.fullname" $ }}-0
+        secret:
+          secretName: {{ include "nifi-registry.fullname" $ }}-0
       {{- range .Values.certManager.caSecrets }}
       - name: {{ include "nifi-registry.fullname" $ }}-{{ . }}
         secret:
