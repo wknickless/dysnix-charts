@@ -85,3 +85,15 @@ $CURL \
                    "publicClient": "false",
                    "secret":"CZhA1IOePlXHz3PWqVwYoVAcYIUHTcDK"
                  }'
+
+$CURL \
+     --request POST $KCURL/admin/realms/nifi/clients \
+     --header "Authorization: Bearer $KCAT" \
+     --header "Content-Type: application/json" \
+     --data-raw '{
+                   "clientId":"nifi-registry",
+                   "enabled":"true",
+                   "redirectUris": [ "https://nifi-registry.default.svc.cluster.local:18443/*", "https://ingress-nginx-controller.ingress-nginx.svc.cluster.local:443/*" ],
+                   "publicClient": "false",
+                   "secret":"Dlh86339JJNInG03zG7DJoxiiYZteITb"
+                 }'

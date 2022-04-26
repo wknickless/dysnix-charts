@@ -3,23 +3,18 @@ image:
 
 service:
   type: ClusterIP
-  port: 8443
+  port: 18443
 
 certManager:
   enabled: true
 
-auth:
-  oidc:
-    enabled: true
-    discoveryUrl: http://keycloak.default.svc.cluster.local:8080/auth/realms/nifi/.well-known/openid-configuration
-    clientId: nifi
-    clientSecret: CZhA1IOePlXHz3PWqVwYoVAcYIUHTcDK
-    admin: nifi@example.com
-    claimIdentifyingUser: email
+security:
+  enabled: true
+  admin: "nifi@example.com"
 
-properties:
-  webProxyHost: nifi-registry.default.svc.cluster.local:8443
-
-sts:
-  startupProbe:
-    enabled: true
+oidc:
+  enabled: true
+  discoveryUrl: http://keycloak.default.svc.cluster.local:8080/auth/realms/nifi/.well-known/openid-configuration
+  clientId: nifi-registry
+  clientSecret: Dlh86339JJNInG03zG7DJoxiiYZteITb
+  claimIdentifyingUser: email
