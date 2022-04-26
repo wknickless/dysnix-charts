@@ -10,6 +10,7 @@ certManager:
 
 security:
   enabled: true
+  needClientAuth: false
   admin: "nifi@example.com"
 
 oidc:

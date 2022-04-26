@@ -237,3 +237,7 @@ oidc:
   clientSecret: "SomeRandomKeySetOnOIDCProvider"
   # OIDC Claim that identifies the user
   claimIdentifyingUser: email
+  # OIDC Connection Timeout
+  connectTimeout: "5 secs"
+  # OIDC Read Timeout
+  readTimeout: "5 secs"
