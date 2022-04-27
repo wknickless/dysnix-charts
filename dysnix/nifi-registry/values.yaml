@@ -176,7 +176,6 @@ security:
     accessMode: ReadWriteOnce
     size: 1Gi
 
-
 # cert-manager support
 # Setting this true will have cert-manager create a private CA just for NiFi Registry,
 # including certificates for each NiFi Registry node.
