@@ -1,0 +1,42 @@
+image:
+  tag: "1.15.3"
+
+service:
+  type: ClusterIP
+  port: 18443
+
+certManager:
+  enabled: true
+
+security:
+  enabled: true
+  needClientAuth: false
+  admin: "nifi@example.com"
+
+oidc:
+  enabled: true
+  discoveryUrl: http://keycloak.default.svc.cluster.local:8080/auth/realms/nifi/.well-known/openid-configuration
+  clientId: nifi-registry
+  clientSecret: Dlh86339JJNInG03zG7DJoxiiYZteITb
+  claimIdentifyingUser: email
+
+persistence:
+  enabled: false
+
+flowProvider:
+  git:
+    enabled: true
+    url: git@git.default.svc.cluster.local:nifi-flows.git
+    secretName: nifi-registry-git-deploy
+
+ssh:
+  config: |
+    IdentityFile ~/.ssh/registry-deploy-key
+  known_hosts: |
+    KNOWN_HOSTS_FOR_GIT_REPOSITORY
+  # ssh -i /mnt/git-deploy/id_rsa -oStrictHostKeyChecking=accept-new -oHashKnownHosts=no git@git-0.git-headless.default.svc.cluster.local date
+  # cat /root/.ssh/known_hosts
+
+extraEnvs:
+  - name: GIT_SSH_COMMAND
+    value: "ssh -v"
