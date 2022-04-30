@@ -38,33 +38,59 @@ spec:
             - sh
             - -cex
             - |
-              git clone $(NIFI_REGISTRY_GIT_URL) "/tmp/flow_storage" || git -C "/tmp/flow_storage" pull
-              cp --dereference /ssh/id_rsa /ssh-dest/
+            {{- if .Values.flowProvider.git.ssh.secretName }}
+              mkdir -p /root/.ssh
+              chmod 700 /root/.ssh
+              cp --dereference /sshSecret/id_rsa /root/.ssh
+              chmod 600 /root/.ssh/id_rsa
+            {{ end }}
+            {{- if .Values.flowProvider.git.ssh.known_hosts }}
+              mkdir -p /root/.ssh
+              chmod 700 /root/.ssh
+              cp --dereference /sshKnownHosts/known_hosts /root/.ssh
+              chmod 600 /root/.ssh/known_hosts
+            {{ end }}
+            {{- if .Values.flowProvider.git.ssh.config }}
+              mkdir -p /root/.ssh
+              chmod 700 /root/.ssh
+              cp --dereference /sshConfig/config /root/.ssh
+              chmod 600 /root/.ssh/config
+            {{ end }}
 
-              chown -R 1000:1000 /tmp/flow_storage /ssh-dest
+              git clone "{{ .Values.flowProvider.git.url }}" "/tmp/flow_storage" || git -C "/tmp/flow_storage" pull
+              chown -R 1000:1000 /tmp/flow_storage
+
+            {{- /* Just go ahead and save a known_hosts if the chart user did not */}}
+            {{- if not .Values.flowProvider.git.ssh.known_hosts }}
+              if [ -r /root/.ssh/known_hosts ]
+              then
+                cp --dereference /root/.ssh/known_hosts /sshKnownHosts/known_hosts
+              fi
+            {{- /* if not .Values.flowProvider.git.ssh.known_hosts */}}{{ end }}
           env:
-            - name: NIFI_REGISTRY_GIT_URL
-              value: {{ .Values.flowProvider.git.url }}
-            - name: NIFI_REGISTRY_GIT_USER
-              value: {{ .Values.flowProvider.git.user }}
-            - name: NIFI_REGISTRY_GIT_PASSWORD
-              value: {{ .Values.flowProvider.git.password }}
+          {{- if .Values.flowProvider.git.ssh.gitSshCommand }}
+            - name: GIT_SSH_COMMAND
+              value: {{ .Values.flowProvider.git.ssh.gitSshCommand }}
+          {{- /* if .Values.flowProvider.git.ssh.gitSshCommand */}}{{ end }}
           {{- if .Values.initContainers.extraEnvs }}
             {{ toYaml .Values.initContainers.extraEnvs | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: "flow-storage"
               mountPath: /tmp
-            {{- if .Values.ssh.known_hosts }}
-            - name: sshcfgmap
-              mountPath: /root/.ssh
+            {{- if .Values.flowProvider.git.ssh.secretName }}
+            - name: ssh-secret
+              mountPath: /sshSecret
               readOnly: true
-            {{- end }}
-            - name: git-key
-              mountPath: /ssh
+            {{- /* if .Values.flowProvider.git.ssh.secretName */}}{{ end }}
+            - name: ssh-known-hosts
+              mountPath: /sshKnownHosts
+              readOnly: false
+            {{- if .Values.flowProvider.git.ssh.config }}
+            - name: ssh-config
+              mountPath: /sshConfig
               readOnly: true
-            - name: git-key-fixed
-              mountPath: /ssh-dest
+            {{- /* if .Values.flowProvider.git.ssh.config */}}{{ end }}
         {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: take-data-dir-ownership
@@ -101,16 +127,26 @@ spec:
               mkdir postgresql
               cd postgresql
               curl -k "{{ .Values.flowProvider.postgres.driverURL }}{{ .Values.flowProvider.postgres.fileName }}" -o "{{ .Values.flowProvider.postgres.fileName }}"
-            {{- end }}
-            {{- if .Values.ssh.known_hosts }}
-              cp --verbose --dereference /sshcfgmap/known_hosts /home/nifi/.ssh/
-              {{- if .Values.ssh.config }}
-                cp --verbose --dereference /sshcfgmap/config /home/nifi/.ssh/
-              {{- end }}
-              {{- if .Values.flowProvider.git.enabled }}
-                cp --verbose --dereference /ssh/id_rsa /home/nifi/.ssh/
-              {{- end }}
-            {{- end }}
+            {{- /* if .Values.flowProvider.postgres.enabled */}}{{ end }}
+            {{- if .Values.flowProvider.git.ssh.secretName }}
+              mkdir -p "$HOME"/.ssh
+              chmod 700 "$HOME"/.ssh
+              cp --dereference /sshSecret/id_rsa "$HOME"/.ssh
+              chmod 600 "$HOME"/.ssh/id_rsa
+            {{ end }}
+            {{- if .Values.flowProvider.git.ssh.config }}
+              mkdir -p "$HOME"/.ssh
+              chmod 700 "$HOME"/.ssh
+              cp --dereference /sshConfig/config "$HOME"/.ssh
+              chmod 600 "$HOME"/.ssh/config
+            {{ end }}
+              if [ -r "$HOME"/sshKnownHosts/known_hosts ]
+              then
+                mkdir -p "$HOME"/.ssh
+                chmod 700 "$HOME"/.ssh
+                cp --dereference /sshKnownHosts/known_hosts "$HOME"/.ssh/
+                chmod 600 "$HOME"/.ssh/known_hosts
+              fi
 
           {{/*
               Following the pattern of the Apache-provided scripts that turn
@@ -268,6 +304,10 @@ spec:
             - name: AUTH
               value: "tls"
           {{- /* if .Values.security.enabled */}}{{ end }}
+          {{- if .Values.flowProvider.git.ssh.gitSshCommand }}
+            - name: GIT_SSH_COMMAND
+              value: {{ .Values.flowProvider.git.ssh.gitSshCommand }}
+          {{- /* if .Values.flowProvider.git.ssh.gitSshCommand */}}{{ end }}
           {{- if .Values.extraEnvs }}
             {{ toYaml .Values.extraEnvs | nindent 12 }}
           {{- end }}
@@ -281,23 +321,25 @@ spec:
               mountPath: /opt/nifi-registry/nifi-registry-current/flow_storage
               subPath: flow_storage
             {{ end }}
-            {{- if .Values.ssh.known_hosts }}
-            - name: sshcfgmap
-              mountPath: /sshcfgmap
+            {{- if .Values.flowProvider.git.ssh.secretName }}
+            - name: ssh-secret
+              mountPath: /sshSecret
               readOnly: true
-            - name: sshdir
-              mountPath: /home/nifi/.ssh
-              readOnly: false
-            {{- end }}
-            {{- if .Values.flowProvider.git.enabled }}
+            {{- /* if .Values.flowProvider.git.ssh.secretName */}}{{ end }}
+            {{- if .Values.flowProvider.git.ssh.known_hosts }}
+            - name: ssh-known-hosts
+              mountPath: /sshKnownHosts
+              readOnly: true
+            {{- /* if .Values.flowProvider.git.ssh.known_hosts */}}{{ end }}
+            {{- if .Values.flowProvider.git.ssh.config }}
+            - name: ssh-config
+              mountPath: /sshConfig
+              readOnly: true
+            {{- /* if .Values.flowProvider.git.ssh.config */}}{{ end }}
             {{- if .Values.flowProvider.git.config.enabled }}
             - name: git-config
               mountPath: /home/nifi/.gitconfig
               subPath: gitconfig
-              readOnly: true
-            {{- end }}
-            - name: git-key-fixed
-              mountPath: /ssh
               readOnly: true
             {{- end }}
             {{- if .Values.certManager.enabled }}
@@ -375,36 +417,30 @@ spec:
 {{ toYaml .Values.certManager.resources | indent 12 }}
         {{- /* if .Values.certManager.enabled */}}{{ end }}
       volumes:
-        {{- if .Values.ssh.known_hosts }}
-        - name: sshdir
-          emptyDir: {}
-        - name: sshcfgmap
-          configMap:
-            name: {{ template "nifi-registry.fullname" . }}-ssh-config
-            defaultMode: 0644
-        {{- end }}
-        {{- if .Values.flowProvider.git.enabled }}
-        {{- if not .Values.persistence.enabled }}
-        - name: flow-storage
-          emptyDir: {}
-        {{- end }}
-        {{- if .Values.flowProvider.git.config.enabled }}
-        - name: git-config
-          secret:
-            secretName: {{ include "flowProvider.git.config.secretName" . }}
-            defaultMode: 0400
-        {{- end }}
-        - name: git-key
-          secret:
-            {{- if .Values.flowProvider.git.secretName }}
-            secretName: {{ .Values.flowProvider.git.secretName }}
-            {{- else }}
-            secretName: {{ template "nifi-registry.fullname" . }}-git-deploy
-            {{- end }}
-            defaultMode: 0400
-        - name: git-key-fixed
-          emptyDir: {}
-        {{- end }}
+      {{- if not .Values.persistence.enabled }}
+      - name: flow-storage
+        emptyDir: {}
+      {{- /* if not .Values.persistence.enabled */}}{{ end }}
+      {{- if .Values.flowProvider.git.ssh.secretName }}
+      - name: ssh-secret
+        secret:
+          secretName: {{ .Values.flowProvider.git.ssh.secretName }}
+          defaultMode: 0444
+      {{- /* if .Values.flowProvider.git.ssh.secretName */}}{{ end }}
+      - name: ssh-known-hosts
+      {{- if .Values.flowProvider.git.ssh.known_hosts }}
+        configMap:
+          name: {{ template "nifi-registry.fullname" . }}-ssh-known-hosts
+          defaultMode: 0444
+      {{- /* if .Values.flowProvider.git.ssh.known_hosts */}}{{ else }}
+        emptyDir: {}
+      {{- /* if .Values.flowProvider.git.ssh.known_hosts */}}{{ end }}
+      {{- if .Values.flowProvider.git.ssh.config }}
+      - name: ssh-config
+        configMap:
+          name: {{ template "nifi-registry.fullname" . }}-ssh-config
+          defaultMode: 0444
+      {{- /* if .Values.flowProvider.git.ssh.config */}}{{ end }}
       {{- if .Values.certManager.enabled }}
       - name: tls
         emptyDir: {}
@@ -417,7 +453,7 @@ spec:
       - name: {{ include "nifi-registry.fullname" $ }}-{{ . }}
         secret:
           secretName: {{ . }}
-      {{- end }}
+      {{- /* range .Values.certManager.caSecrets */}}{{ end }}
       {{- /* if .Values.certManager.enabled */}}{{ end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

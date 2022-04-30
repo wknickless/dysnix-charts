@@ -49,27 +49,41 @@ spec:
         - containerPort: 22
           name: ssh
         volumeMounts:
-        - name: git-deploy
-          mountPath: /mnt/git-deploy
+        - name: git-ssh
+          mountPath: /mnt/git-ssh
         command:
         - bash
         - -cxe
         - |
           apt-get update
-          apt-get install -y openssh-server git fswatch
+          apt-get install -y openssh-server git
           ls -l /home
           useradd --user-group git
           mkdir -p /home/git/.ssh
           chmod 700 /home/git/.ssh
-          cp /mnt/git-deploy/id_rsa.pub /home/git/.ssh/authorized_keys
+          cp /mnt/git-ssh/id_rsa.pub /home/git/.ssh/authorized_keys
           chmod 600 /home/git/.ssh/authorized_keys
-          chown -R git.git /home/git/.ssh
-          # fswatch -xr /home/git
+          chown -R git.git /home/git/
+          su - git -c '/bin/sh -xc "mkdir nifi-flows.git"'
+          su - git -c '/bin/sh -xc "cd nifi-flows.git; git init"'
+          su - git -c '/bin/sh -xc "cd nifi-flows.git; git config user.email nifi-registry@example.com"'
+          su - git -c '/bin/sh -xc "cd nifi-flows.git; git config user.name Registry"'
+          su - git -c '/bin/sh -xc "cd nifi-flows.git; touch .empty"'
+          su - git -c '/bin/sh -xc "cd nifi-flows.git; git add .empty"'
+          su - git -c '/bin/sh -xc "cd nifi-flows.git; git commit -m emptiness"'
           mkdir -p /var/run/sshd
           /usr/sbin/sshd -t
           /usr/sbin/sshd -D -e
+        readinessProbe:
+          tcpSocket:
+            port: 22
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 1
+          successThreshold: 2
+          failureThreshold: 3
       volumes:
-      - name: git-deploy
+      - name: git-ssh
         secret:
-          secretName: nifi-registry-git-deploy
+          secretName: nifi-registry-git-ssh
           defaultMode: 256

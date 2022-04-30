@@ -26,17 +26,6 @@ persistence:
 flowProvider:
   git:
     enabled: true
-    url: git@git.default.svc.cluster.local:nifi-flows.git
-    secretName: nifi-registry-git-deploy
-
-ssh:
-  config: |
-    IdentityFile ~/.ssh/registry-deploy-key
-  known_hosts: |
-    KNOWN_HOSTS_FOR_GIT_REPOSITORY
-  # ssh -i /mnt/git-deploy/id_rsa -oStrictHostKeyChecking=accept-new -oHashKnownHosts=no git@git-0.git-headless.default.svc.cluster.local date
-  # cat /root/.ssh/known_hosts
-
-extraEnvs:
-  - name: GIT_SSH_COMMAND
-    value: "ssh -v"
+    url: git@git-0.git-headless.default.svc.cluster.local:nifi-flows.git
+    ssh:
+      secretName: nifi-registry-git-ssh

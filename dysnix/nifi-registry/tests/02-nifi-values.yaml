@@ -6,6 +6,8 @@ registry:
 
 certManager:
   enabled: true
+  caSecrets:
+  - nifi-registry-ca
 
 persistence:
   enabled: true
