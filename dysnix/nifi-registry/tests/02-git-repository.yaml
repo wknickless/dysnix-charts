@@ -10,6 +10,9 @@ spec:
     - name: ssh
       port: 22
       targetPort: ssh
+#    - name: http
+#      port: 80
+#      targetPort: http
   selector:
    app.kubernetes.io/name: git
 ---
@@ -24,6 +27,9 @@ spec:
     - name: ssh
       port: 22
       targetPort: ssh
+#    - name: http
+#      port: 80
+#      targetPort: http
   selector:
    app.kubernetes.io/name: git
 ---
@@ -43,7 +49,7 @@ spec:
         app.kubernetes.io/name: git
     spec:
       containers:
-      - name: git
+      - name: ssh
         image: ubuntu:latest
         ports:
         - containerPort: 22
@@ -58,19 +64,13 @@ spec:
           apt-get update
           apt-get install -y openssh-server git
           ls -l /home
-          useradd --user-group git
+          useradd --user-group --shell /bin/bash git
           mkdir -p /home/git/.ssh
           chmod 700 /home/git/.ssh
           cp /mnt/git-ssh/id_rsa.pub /home/git/.ssh/authorized_keys
           chmod 600 /home/git/.ssh/authorized_keys
           chown -R git.git /home/git/
-          su - git -c '/bin/sh -xc "mkdir nifi-flows.git"'
-          su - git -c '/bin/sh -xc "cd nifi-flows.git; git init"'
-          su - git -c '/bin/sh -xc "cd nifi-flows.git; git config user.email nifi-registry@example.com"'
-          su - git -c '/bin/sh -xc "cd nifi-flows.git; git config user.name Registry"'
-          su - git -c '/bin/sh -xc "cd nifi-flows.git; touch .empty"'
-          su - git -c '/bin/sh -xc "cd nifi-flows.git; git add .empty"'
-          su - git -c '/bin/sh -xc "cd nifi-flows.git; git commit -m emptiness"'
+          su - git -c '/bin/sh -xc "git init --bare nifi-flows.git"'
           mkdir -p /var/run/sshd
           /usr/sbin/sshd -t
           /usr/sbin/sshd -D -e
@@ -82,6 +82,29 @@ spec:
           timeoutSeconds: 1
           successThreshold: 2
           failureThreshold: 3
+#      - name: http
+#        image: ubuntu:latest
+#        ports:
+#        - containerPort: 80
+#          name: http
+#        command:
+#        - bash
+#        - -cxe
+#        - |
+#          apt-get update
+#          apt-get install -y nginx git nano fcgiwrap apache2-utils
+#          mkdir /var/www/html/git
+#          chown -R www-data:www-data /var/www/html/git
+#
+#          tail -f /dev/null
+#        readinessProbe:
+#          tcpSocket:
+#            port: 80
+#          initialDelaySeconds: 30
+#          periodSeconds: 5
+#          timeoutSeconds: 1
+#          successThreshold: 2
+#          failureThreshold: 3
       volumes:
       - name: git-ssh
         secret:

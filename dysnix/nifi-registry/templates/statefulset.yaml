@@ -31,67 +31,6 @@ spec:
       shareProcessNamespace: true
       {{- /* if .Values.certManager.enabled */}}{{ end }}
       initContainers:
-        {{- if .Values.flowProvider.git.enabled }}
-        - name: git-clone
-          image: "{{ .Values.initContainers.git.image }}:{{ .Values.initContainers.git.tag }}"
-          command:
-            - sh
-            - -cex
-            - |
-            {{- if .Values.flowProvider.git.ssh.secretName }}
-              mkdir -p /root/.ssh
-              chmod 700 /root/.ssh
-              cp --dereference /sshSecret/id_rsa /root/.ssh
-              chmod 600 /root/.ssh/id_rsa
-            {{ end }}
-            {{- if .Values.flowProvider.git.ssh.known_hosts }}
-              mkdir -p /root/.ssh
-              chmod 700 /root/.ssh
-              cp --dereference /sshKnownHosts/known_hosts /root/.ssh
-              chmod 600 /root/.ssh/known_hosts
-            {{ end }}
-            {{- if .Values.flowProvider.git.ssh.config }}
-              mkdir -p /root/.ssh
-              chmod 700 /root/.ssh
-              cp --dereference /sshConfig/config /root/.ssh
-              chmod 600 /root/.ssh/config
-            {{ end }}
-
-              git clone "{{ .Values.flowProvider.git.url }}" "/tmp/flow_storage" || git -C "/tmp/flow_storage" pull
-              chown -R 1000:1000 /tmp/flow_storage
-
-            {{- /* Just go ahead and save a known_hosts if the chart user did not */}}
-            {{- if not .Values.flowProvider.git.ssh.known_hosts }}
-              if [ -r /root/.ssh/known_hosts ]
-              then
-                cp --dereference /root/.ssh/known_hosts /sshKnownHosts/known_hosts
-              fi
-            {{- /* if not .Values.flowProvider.git.ssh.known_hosts */}}{{ end }}
-          env:
-          {{- if .Values.flowProvider.git.ssh.gitSshCommand }}
-            - name: GIT_SSH_COMMAND
-              value: {{ .Values.flowProvider.git.ssh.gitSshCommand }}
-          {{- /* if .Values.flowProvider.git.ssh.gitSshCommand */}}{{ end }}
-          {{- if .Values.initContainers.extraEnvs }}
-            {{ toYaml .Values.initContainers.extraEnvs | nindent 12 }}
-          {{- end }}
-          volumeMounts:
-            - name: "flow-storage"
-              mountPath: /tmp
-            {{- if .Values.flowProvider.git.ssh.secretName }}
-            - name: ssh-secret
-              mountPath: /sshSecret
-              readOnly: true
-            {{- /* if .Values.flowProvider.git.ssh.secretName */}}{{ end }}
-            - name: ssh-known-hosts
-              mountPath: /sshKnownHosts
-              readOnly: false
-            {{- if .Values.flowProvider.git.ssh.config }}
-            - name: ssh-config
-              mountPath: /sshConfig
-              readOnly: true
-            {{- /* if .Values.flowProvider.git.ssh.config */}}{{ end }}
-        {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: take-data-dir-ownership
           image: "{{ .Values.initContainers.alpine.image }}:{{ .Values.initContainers.alpine.tag }}"
@@ -128,25 +67,18 @@ spec:
               cd postgresql
               curl -k "{{ .Values.flowProvider.postgres.driverURL }}{{ .Values.flowProvider.postgres.fileName }}" -o "{{ .Values.flowProvider.postgres.fileName }}"
             {{- /* if .Values.flowProvider.postgres.enabled */}}{{ end }}
-            {{- if .Values.flowProvider.git.ssh.secretName }}
               mkdir -p "$HOME"/.ssh
               chmod 700 "$HOME"/.ssh
+              touch "$HOME"/.ssh/known_hosts
+              chmod 600 "$HOME"/.ssh/known_hosts
+            {{- if .Values.flowProvider.git.ssh.secretName }}
               cp --dereference /sshSecret/id_rsa "$HOME"/.ssh
               chmod 600 "$HOME"/.ssh/id_rsa
             {{ end }}
             {{- if .Values.flowProvider.git.ssh.config }}
-              mkdir -p "$HOME"/.ssh
-              chmod 700 "$HOME"/.ssh
               cp --dereference /sshConfig/config "$HOME"/.ssh
               chmod 600 "$HOME"/.ssh/config
             {{ end }}
-              if [ -r "$HOME"/sshKnownHosts/known_hosts ]
-              then
-                mkdir -p "$HOME"/.ssh
-                chmod 700 "$HOME"/.ssh
-                cp --dereference /sshKnownHosts/known_hosts "$HOME"/.ssh/
-                chmod 600 "$HOME"/.ssh/known_hosts
-              fi
 
           {{/*
               Following the pattern of the Apache-provided scripts that turn
@@ -245,6 +177,8 @@ spec:
               xmlstarlet ed --inplace --update "//configuration/root/appender-ref[@ref='APP_FILE']/@ref" -v CONSOLE "${NIFI_REGISTRY_HOME}/conf/logback.xml"
 
               exec ${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh run
+              # ${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh run
+              # tail -f /dev/null
           ports:
           {{ if .Values.security.enabled }}
             - name: https
@@ -265,6 +199,8 @@ spec:
               value: {{ .Values.flowProvider.git.user }}
             - name: NIFI_REGISTRY_GIT_PASSWORD
               value: {{ .Values.flowProvider.git.password }}
+            - name: NIFI_REGISTRY_GIT_REPO
+              value: {{ .Values.flowProvider.git.url }}
           {{- end }}
           {{- if .Values.flowProvider.postgres.enabled }}
             - name: NIFI_REGISTRY_FLOW_PROVIDER
@@ -316,7 +252,7 @@ spec:
             - name: "database"
               mountPath: /opt/nifi-registry/nifi-registry-current/database
             {{ end }}
-            {{ if or .Values.persistence.enabled .Values.flowProvider.git.enabled }}
+            {{ if .Values.persistence.enabled }}
             - name: "flow-storage"
               mountPath: /opt/nifi-registry/nifi-registry-current/flow_storage
               subPath: flow_storage
@@ -417,10 +353,6 @@ spec:
 {{ toYaml .Values.certManager.resources | indent 12 }}
         {{- /* if .Values.certManager.enabled */}}{{ end }}
       volumes:
-      {{- if not .Values.persistence.enabled }}
-      - name: flow-storage
-        emptyDir: {}
-      {{- /* if not .Values.persistence.enabled */}}{{ end }}
       {{- if .Values.flowProvider.git.ssh.secretName }}
       - name: ssh-secret
         secret:

@@ -1,5 +1,5 @@
 image:
-  tag: "1.15.3"
+  tag: "1.16.1"
 
 service:
   type: ClusterIP
@@ -7,6 +7,8 @@ service:
 
 certManager:
   enabled: true
+  caSecrets:
+  - nifi-ca
 
 security:
   enabled: true
@@ -26,6 +28,8 @@ persistence:
 flowProvider:
   git:
     enabled: true
+    user: git
+    password: notUsed
     url: git@git-0.git-headless.default.svc.cluster.local:nifi-flows.git
     ssh:
       secretName: nifi-registry-git-ssh
