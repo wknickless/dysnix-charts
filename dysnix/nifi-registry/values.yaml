@@ -177,6 +177,9 @@ security:
   # storageClass: "-"
     accessMode: ReadWriteOnce
     size: 1Gi
+  # ConfigMap with users.xml and authorizations.xml keys; note that these
+  # settings will override the admin: key above if present
+  authConf:
 
 # cert-manager support
 # Setting this true will have cert-manager create a private CA just for NiFi Registry,

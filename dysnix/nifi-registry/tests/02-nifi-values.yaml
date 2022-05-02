@@ -40,3 +40,9 @@ ingress:
   path: /
   hosts:
   - ingress-nginx-controller.ingress-nginx.svc.cluster.local
+
+configmaps:
+- name: nifi-tester-flow
+  mountPath: /opt/nifi/flow-xml
+
+customFlow: /opt/nifi/flow-xml/02-nifi-tester-flow.xml
