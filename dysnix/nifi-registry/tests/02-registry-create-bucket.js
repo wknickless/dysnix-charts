@@ -36,6 +36,13 @@ describe('NiFi Registry Create Bucket', () => {
         expect(userName).to.include('anonymous')
     }).timeout(30000)
 
+    it('Get screenshot of anonymous user', async () => {
+        await page.screenshot({
+            path: process.env.HOME+"/screenshots/01-anonymous-user.png",
+            fullPage: true
+        })
+    })
+
     it('Click login and go to Keycloak login screen', async() => {
         await Promise.all([
             page.click('a[id="login-link-container"]'),
@@ -47,7 +54,14 @@ describe('NiFi Registry Create Bucket', () => {
         expect(titleContent).to.include('Sign in to your account')
     })
 
-    it('nifi@example.com shown as logged in user', async () => {
+    it('Get screenshot of Keycloak login page', async () => {
+        await page.screenshot({
+            path: process.env.HOME+"/screenshots/02-keycloak-redirect.png",
+            fullPage: true
+        })
+    })
+
+    it('Log in as nifi@example.com', async () => {
         await page.type('input[id="username"]','nifi')
         await page.type('input[id="password"]','reallychangeme')
         await Promise.all([
@@ -59,6 +73,13 @@ describe('NiFi Registry Create Bucket', () => {
         const userName = await currentUser.evaluate(el => el.textContent)
         expect(userName).to.include('nifi@example.com')
     }).timeout(300000)
+
+    it('Get screenshot of logged in user', async () => {
+        await page.screenshot({
+            path: process.env.HOME+"/screenshots/03-logged-in-user.png",
+            fullPage: true
+        })
+    })
 
     it('Confirm settings wrench available', async () => {
         await page.waitForSelector('button[mattooltip="Settings"]')
@@ -91,7 +112,7 @@ describe('NiFi Registry Create Bucket', () => {
 
     it('Get screenshot after filling in', async() => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/01-filling-in.png",
+            path: process.env.HOME+"/screenshots/04-filling-in.png",
             fullPage: true
         })
     })
@@ -105,7 +126,7 @@ describe('NiFi Registry Create Bucket', () => {
 
     it('Get screenshot after creating new bucket', async() => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/02-created-new-bucket.png",
+            path: process.env.HOME+"/screenshots/05-created-new-bucket.png",
             fullPage: true
         })
     })

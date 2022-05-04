@@ -1,3 +1,4 @@
+const { it } = require('mocha')
 const puppeteer = require ('puppeteer-core')
 const expect = require('chai').expect
 
@@ -36,7 +37,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of Keycloak login page', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/01-keycloak-redirect.png",
+            path: process.env.HOME+"/screenshots/06-keycloak-redirect.png",
             fullPage: true
         })
     })
@@ -73,9 +74,17 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of logged in user', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/02-logged-in-user.png",
+            path: process.env.HOME+"/screenshots/07-logged-in-user.png",
             fullPage: true
         })
+    })
+
+    it('Close Navigate and Operate Controls', async() => {
+        const navControlButton = await page.waitForXPath('//div[@id="navigation-control"]//div[@class="graph-control-header-container hidden pointer"]')
+        await navControlButton.click()
+        const opControlButton = await page.waitForXPath('//div[@id="operation-control"]//div[@class="graph-control-header-container hidden pointer"]')
+        await opControlButton.click()
+        await page.waitForNetworkIdle()
     })
 
     it('Open Process Group Context Menu', async() => {
@@ -85,7 +94,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of context menu', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/04-context-menu.png",
+            path: process.env.HOME+"/screenshots/08-context-menu.png",
             fullPage: true
         })
     })
@@ -97,7 +106,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of version menu item', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/05-version-menu-item.png",
+            path: process.env.HOME+"/screenshots/09-version-menu-item.png",
             fullPage: true
         })
     })
@@ -109,7 +118,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of Save Flow Version', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/06-save-flow-version.png",
+            path: process.env.HOME+"/screenshots/10-save-flow-version.png",
             fullPage: true
         })
     })
@@ -123,21 +132,45 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of Filled In Save Flow Version', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/07-filled-save-flow-version.png",
+            path: process.env.HOME+"/screenshots/11-filled-save-flow-version.png",
             fullPage: true
         })
     })
 
     it('Click on Save Button', async() => {
         const dialog = await page.waitForSelector('div[id="save-flow-version-dialog"]')
-        const buttonList = await dialog.$x('//button[contains(.,"Save")]')
+        const buttonList = await dialog.$x('//div[@id="save-flow-version-dialog"]//div[@class="dialog-buttons"]//div[@class="button"]')
         await buttonList[0].click()
         await page.waitForNetworkIdle()
     })
 
     it('Get screenshot after Save Clicked', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/08-post-save-flow-version.png",
+            path: process.env.HOME+"/screenshots/12-post-save-flow-version.png",
+            fullPage: true
+        })
+    })
+
+    it('Confirm One Process Group Up To Date', async() => {
+        controllerUpToDateCount = await page.waitForSelector('span[id="controller-up-to-date-count"]')
+        actualCount = await controllerUpToDateCount.evaluate(el => el.textContent)
+        for (let i = 0; ( i < 30 ) && ( actualCount != "1"); i++ ) {
+            console.log("        Process Groups Up To Date: "+actualCount+" ( try "+i.toString()+")")
+            await Promise.all([
+                page.reload(),
+                page.waitForNavigation(),
+                page.waitForNetworkIdle(),
+                page.waitForTimeout(2000)
+            ])
+            controllerUpToDateCount = await page.waitForSelector('span[id="controller-up-to-date-count"]')
+            actualCount = await controllerUpToDateCount.evaluate(el => el.textContent)
+        }
+        expect(actualCount).to.equal('1')
+    }).timeout(300000)
+
+    it('Get screenshot after Process Group Confirmed Updated', async () => {
+        await page.screenshot({
+            path: process.env.HOME+"/screenshots/13-process-group-count-updated.png",
             fullPage: true
         })
     })
