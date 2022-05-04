@@ -16,7 +16,7 @@ sts:
   startupProbe:
     enabled: true
 
-replicaCount: 3
+replicaCount: 2
 
 properties:
   webProxyHost: ingress-nginx-controller.ingress-nginx.svc.cluster.local

@@ -79,6 +79,36 @@ describe('Put NiFi Process Group Under Version Control', () => {
         })
     })
 
+    it('All nodes connected', async () => {
+        connectedNodesUserElement = await page.waitForSelector('span[id="connected-nodes-count"]')
+        connectedNodesCount = await connectedNodesUserElement.evaluate(el => el.textContent )
+        // loop 30 times unless connectedNodesCount isn't "2 / 2"
+        for (let i = 0; ( i < 30 ) && ( connectedNodesCount != "2 / 2" ); i++ ) {
+            console.log("        Connected Nodes Count: "+connectedNodesCount+" ( try "+i.toString()+")")
+            await Promise.all([
+                page.reload(),
+                page.waitForNavigation(),
+                page.waitForNetworkIdle(),
+                page.waitForTimeout(2000)
+            ])
+            try {
+                connectedNodesUserElement = await page.waitForSelector('span[id="connected-nodes-count"]', { timeout: 1000 })
+                connectedNodesCount = await connectedNodesUserElement.evaluate(el => el.textContent )
+            }
+            catch(err) {
+                connectedNodesCount = err.message
+            }
+        }
+        expect(connectedNodesCount).to.equal('2 / 2')
+    }).timeout(300000)
+
+    it('Get screenshot of all nodes connected', async () => {
+        await page.screenshot({
+            path: process.env.HOME+"/screenshots/08-all-nodes-connected.png",
+            fullPage: true
+        })
+    })
+
     it('Close Navigate and Operate Controls', async() => {
         const navControlButton = await page.waitForXPath('//div[@id="navigation-control"]//div[@class="graph-control-header-container hidden pointer"]')
         await navControlButton.click()
@@ -94,7 +124,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of context menu', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/08-context-menu.png",
+            path: process.env.HOME+"/screenshots/09-context-menu.png",
             fullPage: true
         })
     })
@@ -106,7 +136,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of version menu item', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/09-version-menu-item.png",
+            path: process.env.HOME+"/screenshots/10-version-menu-item.png",
             fullPage: true
         })
     })
@@ -118,7 +148,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of Save Flow Version', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/10-save-flow-version.png",
+            path: process.env.HOME+"/screenshots/11-save-flow-version.png",
             fullPage: true
         })
     })
@@ -132,7 +162,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot of Filled In Save Flow Version', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/11-filled-save-flow-version.png",
+            path: process.env.HOME+"/screenshots/12-filled-save-flow-version.png",
             fullPage: true
         })
     })
@@ -146,7 +176,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot after Save Clicked', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/12-post-save-flow-version.png",
+            path: process.env.HOME+"/screenshots/13-post-save-flow-version.png",
             fullPage: true
         })
     })
@@ -170,7 +200,7 @@ describe('Put NiFi Process Group Under Version Control', () => {
 
     it('Get screenshot after Process Group Confirmed Updated', async () => {
         await page.screenshot({
-            path: process.env.HOME+"/screenshots/13-process-group-count-updated.png",
+            path: process.env.HOME+"/screenshots/14-process-group-count-updated.png",
             fullPage: true
         })
     })
