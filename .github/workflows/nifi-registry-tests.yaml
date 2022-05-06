@@ -104,8 +104,8 @@ jobs:
       - name: Install test framework components
         run: |
           cd dysnix/nifi-registry
-          kubectl apply -f tests/01-oidc-test-framework
           tests/00-install-cert-manager.bash
+          kubectl apply -f tests/01-oidc-test-framework
           kubectl rollout status --timeout=20m --watch statefulset/keycloak
           tests/01-oidc-keycloak-setup.bash
           kubectl rollout status --timeout=20m --watch statefulset/browserless
@@ -152,11 +152,11 @@ jobs:
           tests/02-configmaps.sh
           tests/02-ssh-keygen.sh
           kubectl apply -f tests/02-git-repository.yaml
-          kubectl apply -f tests/01-oidc-test-framework
           tests/00-install-cert-manager.bash
-          kubectl rollout status --timeout=20m --watch statefulset/keycloak
           minikube addons enable ingress
           kubectl apply -f tests/02-increase-webhook-timeout.yaml
+          kubectl apply -f tests/01-oidc-test-framework
+          kubectl rollout status --timeout=20m --watch statefulset/keycloak
           tests/01-oidc-keycloak-setup.bash
           kubectl rollout status --timeout=20m --watch statefulset/browserless
           kubectl rollout status --timeout=20m --watch statefulset/socks5
