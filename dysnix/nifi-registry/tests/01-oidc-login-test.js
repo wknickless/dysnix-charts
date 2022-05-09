@@ -61,7 +61,7 @@ describe('NiFi Registry Login via OIDC', () => {
         })
     })
 
-    it('nifi@example.com shown as logged in user', async () => {
+    it('NiFi User shown as logged in user', async () => {
         await page.type('input[id="username"]','nifi')
         await page.type('input[id="password"]','reallychangeme')
         await Promise.all([
