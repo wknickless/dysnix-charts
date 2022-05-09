@@ -85,7 +85,7 @@ jobs:
         run: |
           set -ex
           helm delete nifi-registry
-          kubectl wait pod nifi-registry-0 --for=delete
+          kubectl wait pod nifi-registry-0 --for=delete --timeout=300s
           kubectl delete pvc auth-conf-nifi-registry-0 database-nifi-registry-0 flow-storage-nifi-registry-0
       - name: Install additional dependencies/framework (Phase 01)
         run: |
@@ -112,7 +112,7 @@ jobs:
         run: |
           set -ex
           helm delete nifi-registry
-          kubectl wait pod nifi-registry-0 --for=delete
+          kubectl wait pod nifi-registry-0 --for=delete --timeout=300s
           kubectl delete pvc auth-conf-nifi-registry-0 database-nifi-registry-0 flow-storage-nifi-registry-0
       - name: Install additional dependencies/framework (Phase 02)
         run: |
