@@ -185,9 +185,11 @@ spec:
               xmlstarlet ed --inplace --update "//configuration/logger/appender-ref[@ref='APP_FILE']/@ref" -v CONSOLE "${NIFI_REGISTRY_HOME}/conf/logback.xml"
               xmlstarlet ed --inplace --update "//configuration/root/appender-ref[@ref='APP_FILE']/@ref" -v CONSOLE "${NIFI_REGISTRY_HOME}/conf/logback.xml"
 
-              # exec ${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh run
-              ${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh run
-              tail -f /dev/null
+              mkdir -p ./flow_storage
+
+              exec ${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh run
+              # ${NIFI_REGISTRY_HOME}/bin/nifi-registry.sh run
+              # tail -f /dev/null
           ports:
           {{ if .Values.security.enabled }}
             - name: https
