@@ -100,6 +100,29 @@ entries:
     version: 0.1.1
   geth:
   - apiVersion: v2
+    appVersion: v1.10.26
+    created: "2022-11-10T19:43:30.435889196Z"
+    description: Official Go implementation of the Ethereum protocol
+    digest: e6a21dd14c59542e9187632d7dd5f30723937f91edfa2616635d8dff2c1bd5c4
+    home: https://geth.ethereum.org
+    icon: https://geth.ethereum.org/static/images/ethereum.png
+    keywords:
+    - geth
+    - cryptocurrency
+    - blockchain
+    maintainers:
+    - email: daniel@dysnix.com
+      name: daniel-yavorovich
+    - email: av@dysnix.com
+      name: voron
+    name: geth
+    sources:
+    - https://github.com/dysnix/charts
+    - https://github.com/ethereum/go-ethereum
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/geth-0.4.5/geth-0.4.5.tgz
+    version: 0.4.5
+  - apiVersion: v2
     appVersion: v1.10.17
     created: "2022-11-02T17:48:32.139318919Z"
     description: Official Go implementation of the Ethereum protocol
@@ -123,6 +146,21 @@ entries:
     - https://github.com/wknickless/dysnix-charts/releases/download/geth-0.4.4/geth-0.4.4.tgz
     version: 0.4.4
   nifi-registry:
+  - apiVersion: v2
+    appVersion: 0.8.0
+    created: "2022-11-10T19:43:30.634557812Z"
+    description: A subproject of Apache NiFi to store and manage shared resources.
+    digest: 7e794a21a88822a4e5e01010a18e680a92984e68aa80cab379492f9ae8a38d97
+    home: https://github.com/dysnix/charts/tree/master/dysnix/nifi-registry
+    icon: https://svn.apache.org/repos/asf/nifi/site/trunk/images/niFi-logo-horizontal-scaled.png
+    maintainers:
+    - email: daniel@dysnix.com
+      name: daniel-yavorovich
+    name: nifi-registry
+    type: application
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/nifi-registry-1.1.2/nifi-registry-1.1.2.tgz
+    version: 1.1.2
   - apiVersion: v2
     appVersion: 0.8.0
     created: "2022-11-02T17:48:32.332578701Z"
@@ -167,6 +205,23 @@ entries:
     urls:
     - https://github.com/wknickless/dysnix-charts/releases/download/pritunl-0.2.2/pritunl-0.2.2.tgz
     version: 0.2.2
+  proxysql:
+  - apiVersion: v1
+    appVersion: 2.4.4
+    created: "2022-11-10T19:43:30.808031091Z"
+    description: ProxySQL Helm chart for Kubernetes
+    digest: 3ccdf9e0e9da524b4e8a7142d1eda1fa6564c76b6ca23e8ee0051792c9c5736a
+    home: https://www.proxysql.com/
+    maintainers:
+    - email: services@dysnix.com
+      name: Dysnix
+    name: proxysql
+    sources:
+    - https://github.com/dysnix/charts
+    - https://github.com/sysown/proxysql
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/proxysql-0.4.0/proxysql-0.4.0.tgz
+    version: 0.4.0
   rpcfast-gateway:
   - apiVersion: v2
     appVersion: v0.2.0
@@ -194,4 +249,4 @@ entries:
     urls:
     - https://github.com/wknickless/dysnix-charts/releases/download/rpcfast-gateway-0.2.2/rpcfast-gateway-0.2.2.tgz
     version: 0.2.2
-generated: "2022-11-02T17:48:32.676172215Z"
+generated: "2022-11-10T19:43:30.808053392Z"
