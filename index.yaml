@@ -2,6 +2,25 @@ apiVersion: v1
 entries:
   app:
   - apiVersion: v2
+    created: "2022-12-06T23:07:12.724767357Z"
+    dependencies:
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 1.10.x
+    description: Generic application Helm chart
+    digest: f54efd438fe97c194d0fc93a42a6ac3a6cae8f9c9bada3f942333202911137b5
+    maintainers:
+    - email: services@dysnix.com
+      name: Dysnix
+    name: app
+    sources:
+    - https://github.com/dysnix/charts
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/app-0.3.15/app-0.3.15.tgz
+    version: 0.3.15
+  - apiVersion: v2
     created: "2022-11-02T17:48:31.50009264Z"
     dependencies:
     - name: common
@@ -54,6 +73,28 @@ entries:
     version: 0.3.12
   bsc:
   - apiVersion: v2
+    appVersion: v1.1.18
+    created: "2022-12-06T23:07:12.955205193Z"
+    description: Binance Smart Chain chart for Kubernetes
+    digest: 2e13612e6d913363c9f20d9f96f15b1305e42c990e16de0a99707c02d458bda8
+    keywords:
+    - geth
+    - cryptocurrency
+    - blockchain
+    maintainers:
+    - email: daniel@dysnix.com
+      name: daniel-yavorovich
+    - email: av@dysnix.com
+      name: voron
+    - email: ap@dysnix.com
+      name: apolegoshko
+    name: bsc
+    sources:
+    - https://github.com/dysnix/charts
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/bsc-0.6.16/bsc-0.6.16.tgz
+    version: 0.6.16
+  - apiVersion: v2
     appVersion: v1.1.16
     created: "2022-11-02T17:48:31.810861005Z"
     description: Binance Smart Chain chart for Kubernetes
@@ -99,6 +140,29 @@ entries:
     - https://github.com/wknickless/dysnix-charts/releases/download/dshackle-0.1.1/dshackle-0.1.1.tgz
     version: 0.1.1
   geth:
+  - apiVersion: v2
+    appVersion: v1.10.26
+    created: "2022-12-06T23:07:13.165110721Z"
+    description: Official Go implementation of the Ethereum protocol
+    digest: 543fe6a7150862851f5b7e37aa6260e72961bcb6dcd5a20c960750c4037be0f9
+    home: https://geth.ethereum.org
+    icon: https://geth.ethereum.org/static/images/ethereum.png
+    keywords:
+    - geth
+    - cryptocurrency
+    - blockchain
+    maintainers:
+    - email: daniel@dysnix.com
+      name: daniel-yavorovich
+    - email: av@dysnix.com
+      name: voron
+    name: geth
+    sources:
+    - https://github.com/dysnix/charts
+    - https://github.com/ethereum/go-ethereum
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/geth-0.4.6/geth-0.4.6.tgz
+    version: 0.4.6
   - apiVersion: v2
     appVersion: v1.10.26
     created: "2022-11-10T19:43:30.435889196Z"
@@ -148,6 +212,21 @@ entries:
   nifi-registry:
   - apiVersion: v2
     appVersion: 0.8.0
+    created: "2022-12-06T23:07:13.39383594Z"
+    description: A subproject of Apache NiFi to store and manage shared resources.
+    digest: 3009a6f737d42dcc8080ac8a990ff4b9bd148f1701d6569ea0714857b3d7f906
+    home: https://github.com/dysnix/charts/tree/master/dysnix/nifi-registry
+    icon: https://svn.apache.org/repos/asf/nifi/site/trunk/images/niFi-logo-horizontal-scaled.png
+    maintainers:
+    - email: daniel@dysnix.com
+      name: daniel-yavorovich
+    name: nifi-registry
+    type: application
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/nifi-registry-1.1.3/nifi-registry-1.1.3.tgz
+    version: 1.1.3
+  - apiVersion: v2
+    appVersion: 0.8.0
     created: "2022-11-10T19:43:30.634557812Z"
     description: A subproject of Apache NiFi to store and manage shared resources.
     digest: 7e794a21a88822a4e5e01010a18e680a92984e68aa80cab379492f9ae8a38d97
@@ -179,6 +258,34 @@ entries:
   pritunl:
   - apiVersion: v2
     appVersion: "1.29"
+    created: "2022-12-06T23:07:13.644855084Z"
+    dependencies:
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 1.10.x
+    - condition: mongodb.enabled
+      name: mongodb
+      repository: https://charts.bitnami.com/bitnami
+      version: ~10.30.x
+    description: A Helm chart for Kubernetes
+    digest: 46a4d2ef4e3ca87ddfcd852d3c06d7e737580a224828e85dfd4351e9c3b126f8
+    home: https://pritunl.com/
+    maintainers:
+    - email: dennybaa@gmail.com
+      name: dennybaa
+    - email: vladstarrr@icloud.com
+      name: vladstarr
+    name: pritunl
+    sources:
+    - https://github.com/dysnix/charts
+    - https://github.com/pritunl/pritunl
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/pritunl-0.2.3/pritunl-0.2.3.tgz
+    version: 0.2.3
+  - apiVersion: v2
+    appVersion: "1.29"
     created: "2022-11-02T17:48:32.519223273Z"
     dependencies:
     - name: common
@@ -206,6 +313,22 @@ entries:
     - https://github.com/wknickless/dysnix-charts/releases/download/pritunl-0.2.2/pritunl-0.2.2.tgz
     version: 0.2.2
   proxysql:
+  - apiVersion: v1
+    appVersion: 2.4.4
+    created: "2022-12-06T23:07:13.847408738Z"
+    description: ProxySQL Helm chart for Kubernetes
+    digest: 17df9c9f160249cb80ffd84017d017a83cbf060c6727c98e7b87a65358b0d2bc
+    home: https://www.proxysql.com/
+    maintainers:
+    - email: services@dysnix.com
+      name: Dysnix
+    name: proxysql
+    sources:
+    - https://github.com/dysnix/charts
+    - https://github.com/sysown/proxysql
+    urls:
+    - https://github.com/wknickless/dysnix-charts/releases/download/proxysql-0.4.1/proxysql-0.4.1.tgz
+    version: 0.4.1
   - apiVersion: v1
     appVersion: 2.4.4
     created: "2022-11-10T19:43:30.808031091Z"
@@ -249,4 +372,4 @@ entries:
     urls:
     - https://github.com/wknickless/dysnix-charts/releases/download/rpcfast-gateway-0.2.2/rpcfast-gateway-0.2.2.tgz
     version: 0.2.2
-generated: "2022-11-10T19:43:30.808053392Z"
+generated: "2022-12-06T23:07:13.847467438Z"
